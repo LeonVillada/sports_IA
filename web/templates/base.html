@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports AI | {% block title %}Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>SPORTS<span>AI</span></h1>
+            </div>
+            <nav>
+                <ul>
+                    <li onclick="location.href='/'" class="{{ 'active' if request.url.path == '/' else '' }}">Dashboard</li>
+                    <li onclick="location.href='/pronosticos'" class="{{ 'active' if request.url.path == '/pronosticos' else '' }}">Pronósticos</li>
+                    <li onclick="location.href='/ligas'" class="{{ 'active' if request.url.path == '/ligas' else '' }}">Ligas</li>
+                    <li onclick="location.href='/equipos'" class="{{ 'active' if request.url.path == '/equipos' else '' }}">Equipos</li>
+                    <li onclick="location.href='/modelos'" class="{{ 'active' if request.url.path == '/modelos' else '' }}">Modelos IA</li>
+                    <li onclick="location.href='/historico'" class="{{ 'active' if request.url.path == '/historico' else '' }}">Histórico</li>
+                </ul>
+            </nav>
+            <div class="user-profile">
+                <div class="avatar"></div>
+                <div class="user-info">
+                    <p class="name">Admin User</p>
+                    <p class="role">Developer Mode</p>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

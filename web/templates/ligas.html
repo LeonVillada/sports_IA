@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Desglose Global de Ligas{% endblock %}
+
+{% block content %}
+<header>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h2>Análisis Global por Competición</h2>
+            <p>Distribución de los {{ stats.matches }} partidos cargados en el sistema.</p>
+        </div>
+        <button onclick="startSync()" id="syncBtn" class="btn-primary">🔄 Sincronización Total</button>
+    </div>
+</header>
+
+<section class="matches-section">
+    <div class="grid-ligas">
+        {% for liga in stats.leagues %}
+        <div class="liga-card">
+            <div class="liga-icon">{{ liga.name[:2] }}</div>
+            <div class="liga-info">
+                <h3>{{ liga.name }}</h3>
+                <div class="liga-meta">
+                    <span>📊 <strong>{{ liga.match_count }}</strong> Partidos</span>
+                    <span>⚽ <strong>{{ liga.avg_goals }}</strong> Goles/Prom.</span>
+                </div>
+                <div class="progress-bar" style="width: 100%; margin-top: 10px;">
+                    <div class="progress" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<script>
+    function startSync() {
+        const btn = document.getElementById('syncBtn');
+        btn.innerHTML = "⏳ Sincronizando...";
+        btn.disabled = true;
+        fetch('/sync')
+            .then(response => response.json())
+            .then(data => {
+                alert("🚀 Sincronización masiva iniciada en segundo plano.");
+            });
+    }
+</script>
+{% endblock %}

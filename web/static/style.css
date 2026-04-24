@@ -1,0 +1,376 @@
+:root {
+    --bg-color: #0f172a;
+    --sidebar-color: #1e293b;
+    --accent-color: #38bdf8;
+    --text-color: #f8fafc;
+    --glass: rgba(255, 255, 255, 0.05);
+    --border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Outfit', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    height: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background-color: var(--sidebar-color);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid var(--border);
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+}
+
+.logo span {
+    color: var(--accent-color);
+}
+
+nav ul {
+    list-style: none;
+    margin-top: 3rem;
+}
+
+nav li {
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.3s;
+    color: #94a3b8;
+}
+
+nav li.active, nav li:hover {
+    background: var(--glass);
+    color: var(--text-color);
+    border-left: 4px solid var(--accent-color);
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+header {
+    margin-bottom: 2rem;
+}
+
+.top-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.stat-card {
+    background: var(--glass);
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+}
+
+.stat-card p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.stat-card h3 {
+    font-size: 1.8rem;
+    margin-top: 0.5rem;
+}
+
+/* Matches Table */
+.matches-section {
+    background: var(--glass);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.badge {
+    background: #0ea5e920;
+    color: var(--accent-color);
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    border: 1px solid var(--accent-color);
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    color: #94a3b8;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+td {
+    padding: 1.2rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+}
+
+.league-tag {
+    background: #334155;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+
+.score {
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.odds {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.odd {
+    background: rgba(56, 189, 248, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--accent-color);
+}
+
+.search-bar {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.search-bar input {
+    flex: 1;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    color: white;
+    outline: none;
+}
+
+.search-bar button {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    border: none;
+    padding: 0.8rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-sm {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--accent-color);
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.grid-ligas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.liga-card {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: 0.3s;
+}
+
+.liga-card:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-5px);
+}
+
+.liga-icon {
+    width: 50px;
+    height: 50px;
+    background: var(--accent-color);
+    color: var(--bg-color);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.liga-info h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+}
+
+.liga-info p {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+    width: 100px;
+    height: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.progress {
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    border-radius: 10px;
+}
+
+.search-pro {
+    display: flex;
+    gap: 10px;
+    margin-top: 1.5rem;
+}
+
+.search-pro input {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    color: white;
+    flex: 1;
+}
+
+.search-pro select {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    appearance: none; /* Quitar flecha nativa si es necesario */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+}
+
+.search-pro select option {
+    background-color: var(--bg-color);
+    color: white;
+    padding: 10px;
+}
+
+.btn-primary {
+    background: #38bdf8;
+    color: #0f172a;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    transition: 0.3s;
+}
+
+.btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
+}
+
+.team-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-avatar {
+    width: 32px;
+    height: 32px;
+    background: #334155;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+.mini-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 20px;
+}
+
+.mini-chart .bar {
+    width: 4px;
+    background: var(--accent-color);
+    border-radius: 2px;
+}
+
+.badge-status {
+    background: #10b98120;
+    color: #10b981;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+.liga-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.liga-meta span {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.liga-meta strong {
+    color: var(--accent-color);
+}

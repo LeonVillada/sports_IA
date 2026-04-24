@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Explorador de Equipos Pro{% endblock %}
+
+{% block content %}
+<header>
+    <h2>Central de Equipos (Top 5 Ligas)</h2>
+    <p>Análisis estadístico de {{ teams|length }} equipos mapeados en el sistema.</p>
+    
+    <div class="search-container">
+        <form action="/equipos" method="get" class="search-pro">
+            <input type="text" name="search" placeholder="Nombre del equipo..." value="{{ search }}">
+            <select name="liga">
+                <option value="">Todas las Ligas</option>
+                <option value="E0">Premier League</option>
+                <option value="SP1">La Liga</option>
+                <option value="I1">Serie A</option>
+                <option value="D1">Bundesliga</option>
+                <option value="F1">Ligue 1</option>
+            </select>
+            <button type="submit" class="btn-primary">Filtrar</button>
+        </form>
+    </div>
+</header>
+
+<section class="matches-section">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Equipo</th>
+                    <th>Liga</th>
+                    <th>Estado en DB</th>
+                    <th>Rendimiento</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for equipo in teams %}
+                <tr>
+                    <td>
+                        <div class="team-identity">
+                            <div class="team-avatar">{{ equipo.name[:1] }}</div>
+                            <strong>{{ equipo.name }}</strong>
+                        </div>
+                    </td>
+                    <td><span class="league-tag">{{ equipo.league_name }}</span></td>
+                    <td><span class="badge-status">Sincronizado</span></td>
+                    <td>
+                        <div class="mini-chart">
+                            <div class="bar" style="height: 60%"></div>
+                            <div class="bar" style="height: 80%"></div>
+                            <div class="bar" style="height: 40%"></div>
+                            <div class="bar" style="height: 90%"></div>
+                        </div>
+                    </td>
+                    <td><button class="btn-sm">Ver IA Stats</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

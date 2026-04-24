@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard General{% endblock %}
+
+{% block content %}
+<header>
+    <h2>Panel de Control</h2>
+    <div class="top-stats">
+        <div class="stat-card">
+            <p>Partidos en DB</p>
+            <h3>{{ stats.matches }}</h3>
+        </div>
+        <div class="stat-card">
+            <p>Equipos Mapeados</p>
+            <h3>{{ stats.teams }}</h3>
+        </div>
+        <div class="stat-card Confianza">
+            <p>Confianza IA</p>
+            <h3>84.2%</h3>
+        </div>
+    </div>
+</header>
+
+<section class="matches-section">
+    <div class="section-header">
+        <h3>Últimos Datos Importados</h3>
+        <span class="badge">Real-Time</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Liga</th>
+                    <th>Local</th>
+                    <th>Visitante</th>
+                    <th>Marcador</th>
+                    <th>Cuotas (B365)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                <tr>
+                    <td>{{ match.date.strftime('%d/%m/%Y') }}</td>
+                    <td><span class="league-tag">{{ match.league }}</span></td>
+                    <td><strong>{{ match.home }}</strong></td>
+                    <td><strong>{{ match.away }}</strong></td>
+                    <td class="score">{{ match.home_goals }} - {{ match.away_goals }}</td>
+                    <td class="odds">
+                        <span class="odd">L: {{ match.home_win_odds }}</span>
+                        <span class="odd">E: {{ match.draw_odds }}</span>
+                        <span class="odd">V: {{ match.away_win_odds }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Pronósticos IA{% endblock %}
+
+{% block content %}
+<header>
+    <h2>Próximos Encuentros e IA</h2>
+    <p>Análisis de los próximos 15 días basado en volúmenes históricos.</p>
+</header>
+
+<section class="matches-section">
+    <div class="section-header">
+        <h3>Pronósticos Generados</h3>
+        <button class="btn-sm" style="background: var(--accent-color); color: black;">Actualizar Fixtures</button>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Partido</th>
+                    <th>Confianza IA</th>
+                    <th>Pronóstico</th>
+                    <th>Prob. Hándicap</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if not matches %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 3rem; color: #94a3b8;">
+                        No hay partidos próximos cargados. <br>
+                        <small>Sincroniza datos para ver las predicciones.</small>
+                    </td>
+                </tr>
+                {% endif %}
+                {% for match in matches %}
+                <tr>
+                    <td>{{ match.date }}</td>
+                    <td><strong>{{ match.home }} vs {{ match.away }}</strong></td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress" style="width: {{ match.confidence }}%"></div>
+                        </div>
+                        {{ match.confidence }}%
+                    </td>
+                    <td><span class="badge">{{ match.prediction }}</span></td>
+                    <td>{{ match.handicap }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
