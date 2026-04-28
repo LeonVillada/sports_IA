@@ -74,7 +74,17 @@ async def index(request: Request):
     cursor = conn.cursor(dictionary=True)
     cursor.execute("USE sports_ai_db")
     query = """
-        SELECT m.date, l.name as league, t1.name as home, t2.name as away, m.home_goals, m.away_goals, o.home_win_odds, o.draw_odds, o.away_win_odds
+        SELECT m.date, l.name as league, t1.name as home, t2.name as away, 
+               m.home_goals, m.away_goals, 
+               m.ht_home_goals, m.ht_away_goals,
+               m.home_shots, m.away_shots, 
+               m.home_shots_on_target, m.away_shots_on_target, 
+               m.home_corners, m.away_corners,
+               m.home_fouls, m.away_fouls,
+               m.home_yellow_cards, m.away_yellow_cards,
+               m.home_red_cards, m.away_red_cards,
+               o.home_win_odds, o.draw_odds, o.away_win_odds,
+               o.handicap_line, o.home_handicap_odds, o.away_handicap_odds
         FROM matches m
         JOIN leagues l ON m.league_id = l.id
         JOIN teams t1 ON m.home_team_id = t1.id

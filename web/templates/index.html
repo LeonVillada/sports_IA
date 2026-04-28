@@ -35,7 +35,9 @@
                     <th>Local</th>
                     <th>Visitante</th>
                     <th>Marcador</th>
-                    <th>Cuotas (B365)</th>
+                    <th>Estadísticas</th>
+                    <th>Cuotas (1X2)</th>
+                    <th>Hándicap Asiático</th>
                 </tr>
             </thead>
             <tbody>
@@ -46,10 +48,27 @@
                     <td><strong>{{ match.home }}</strong></td>
                     <td><strong>{{ match.away }}</strong></td>
                     <td class="score">{{ match.home_goals }} - {{ match.away_goals }}</td>
+                    <td class="stats-mini">
+                        {% if match.home_shots %}
+                        <span title="Tiros">🎯 {{ match.home_shots }}:{{ match.away_shots }}</span>
+                        <span title="Córners">🚩 {{ match.home_corners }}:{{ match.away_corners }}</span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                     <td class="odds">
                         <span class="odd">L: {{ match.home_win_odds }}</span>
                         <span class="odd">E: {{ match.draw_odds }}</span>
                         <span class="odd">V: {{ match.away_win_odds }}</span>
+                    </td>
+                    <td class="odds-ah">
+                        {% if match.handicap_line %}
+                        <span class="ah-line">Línea: {{ match.handicap_line }}</span>
+                        <span class="odd">L: {{ match.home_handicap_odds }}</span>
+                        <span class="odd">V: {{ match.away_handicap_odds }}</span>
+                        {% else %}
+                        <span class="no-data">N/A</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

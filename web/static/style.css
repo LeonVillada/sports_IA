@@ -374,3 +374,30 @@ td {
 .liga-meta strong {
     color: var(--accent-color);
 }
+
+/* Nuevos Estilos para Estadísticas Avanzadas */
+.stats-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.odds-ah {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ah-line {
+    font-weight: bold;
+    color: #38bdf8;
+    margin-bottom: 2px;
+}
+
+.no-data {
+    color: #475569;
+    font-style: italic;
+    font-size: 0.8rem;
+}
