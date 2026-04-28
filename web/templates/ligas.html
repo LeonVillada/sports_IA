@@ -16,16 +16,17 @@
 <section class="matches-section">
     <div class="grid-ligas">
         {% for liga in stats.leagues %}
-        <div class="liga-card">
-            <div class="liga-icon">{{ liga.name[:2] }}</div>
+        {% set progress = (liga.match_count / stats.max_matches * 100)|round %}
+        <div class="liga-card" title="Análisis de {{ liga.name }}">
+            <div class="liga-icon" title="Código Identificador">{{ liga.name[:2] }}</div>
             <div class="liga-info">
                 <h3>{{ liga.name }}</h3>
                 <div class="liga-meta">
-                    <span>📊 <strong>{{ liga.match_count }}</strong> Partidos</span>
-                    <span>⚽ <strong>{{ liga.avg_goals }}</strong> Goles/Prom.</span>
+                    <span>📊 <strong>{{ liga.match_count }}</strong> Partidos Importados</span>
+                    <span>⚽ <strong>{{ liga.avg_goals }}</strong> Goles por Partido</span>
                 </div>
                 <div class="progress-bar" style="width: 100%; margin-top: 10px;">
-                    <div class="progress" style="width: 100%"></div>
+                    <div class="progress" style="width: {{ progress }}%" title="{{ progress }}% del volumen máximo"></div>
                 </div>
             </div>
         </div>

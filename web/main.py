@@ -13,7 +13,7 @@ sys.path.append(BASE_DIR)
 
 from scripts.db_manager import create_connection
 from scripts.poisson_model import calculate_team_strengths, predict_match
-from scripts.ingestion import download_and_import_massive
+from scripts.ingestion import sync_fixtures, download_and_import_massive
 
 app = FastAPI(title="Sports AI Service")
 
@@ -44,27 +44,38 @@ def get_db_stats():
     cursor = conn.cursor(dictionary=True)
     cursor.execute("USE sports_ai_db")
     
-    # Globales
-    cursor.execute("SELECT COUNT(*) as total FROM matches")
+    # Globales (Filtrados por las 5 grandes ligas)
+    cursor.execute("""
+        SELECT COUNT(*) as total 
+        FROM matches m
+        JOIN leagues l ON m.league_id = l.id
+        WHERE l.name IN ('Premier League', 'La Liga', 'Bundesliga', 'Ligue 1', 'Serie A')
+    """)
     total_matches = cursor.fetchone()['total']
     cursor.execute("SELECT COUNT(*) as total FROM teams")
     total_teams = cursor.fetchone()['total']
     
-    # Desglose por liga
+    # Desglose por liga (Filtrado por las 5 grandes)
     cursor.execute("""
         SELECT l.name, COUNT(m.id) as match_count, 
                ROUND(AVG(m.home_goals + m.away_goals), 2) as avg_goals
         FROM leagues l
         LEFT JOIN matches m ON l.id = m.league_id
+        WHERE l.name IN ('Premier League', 'La Liga', 'Bundesliga', 'Ligue 1', 'Serie A')
         GROUP BY l.id
+        ORDER BY match_count DESC
     """)
     leagues_data = cursor.fetchall()
+    
+    # Calcular el máximo de partidos para las barras de progreso
+    max_matches = max([l['match_count'] for l in leagues_data]) if leagues_data else 100
     
     conn.close()
     return {
         "matches": total_matches, 
         "teams": total_teams, 
-        "leagues": leagues_data
+        "leagues": leagues_data,
+        "max_matches": max_matches
     }
 
 # --- RUTAS PRINCIPALES ---
@@ -73,8 +84,9 @@ async def index(request: Request):
     conn = create_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("USE sports_ai_db")
+    # Modificar la consulta para evitar duplicados y filtrar por las 5 grandes ligas
     query = """
-        SELECT m.date, l.name as league, t1.name as home, t2.name as away, 
+        SELECT DISTINCT m.date, l.name as league, t1.name as home, t2.name as away, 
                m.home_goals, m.away_goals, 
                m.ht_home_goals, m.ht_away_goals,
                m.home_shots, m.away_shots, 
@@ -90,6 +102,7 @@ async def index(request: Request):
         JOIN teams t1 ON m.home_team_id = t1.id
         JOIN teams t2 ON m.away_team_id = t2.id
         LEFT JOIN odds o ON m.id = o.match_id
+        WHERE l.name IN ('Premier League', 'La Liga', 'Bundesliga', 'Ligue 1', 'Serie A')
         ORDER BY m.date DESC LIMIT 20
     """
     cursor.execute(query)
@@ -100,29 +113,57 @@ async def index(request: Request):
 
 @app.get("/pronosticos")
 async def pronosticos(request: Request):
+    # Sincronización rápida de fixtures al entrar (opcional, para real-time)
+    thread = threading.Thread(target=sync_fixtures)
+    thread.start()
+    
     conn = create_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("USE sports_ai_db")
-    cursor.execute("""
-        SELECT m.id, m.date, t1.name as home, t2.name as away, m.home_team_id, m.away_team_id
-        FROM matches m
-        JOIN teams t1 ON m.home_team_id = t1.id
-        JOIN teams t2 ON m.away_team_id = t2.id
-        WHERE m.home_goals IS NULL LIMIT 10
-    """)
-    future_matches = cursor.fetchall()
+    
     strengths = calculate_team_strengths()
     predictions = []
+    
     if strengths:
+        # Traer partidos próximos (scheduled) de las 5 ligas
+        cursor.execute("""
+            SELECT m.id, m.date, t1.name as home, t2.name as away, m.home_team_id, m.away_team_id, l.name as league
+            FROM matches m
+            JOIN teams t1 ON m.home_team_id = t1.id
+            JOIN teams t2 ON m.away_team_id = t2.id
+            JOIN leagues l ON m.league_id = l.id
+            WHERE m.status = 'scheduled' 
+            ORDER BY m.date ASC LIMIT 20
+        """)
+        future_matches = cursor.fetchall()
+        
         for m in future_matches:
-            p = predict_match(m['home_team_id'], m['away_team_id'], strengths)
-            if p:
-                predictions.append({
-                    "date": m['date'].strftime('%d/%m/%Y'), "home": m['home'], "away": m['away'],
-                    "confidence": max(p['home_win'], p['away_win'], p['draw']),
-                    "prediction": "Local" if p['home_win'] > p['away_win'] else "Visitante",
-                    "handicap": p['expected_score']
-                })
+            try:
+                p = predict_match(m['home_team_id'], m['away_team_id'], strengths)
+                if p:
+                    date_obj = m['date']
+                    if isinstance(date_obj, str):
+                        date_str = date_obj
+                    elif date_obj:
+                        date_str = date_obj.strftime('%d/%m/%Y %H:%M')
+                    else:
+                        date_str = "Fecha por definir"
+
+                    predictions.append({
+                        "date": date_str,
+                        "league": m['league'],
+                        "home": m['home'], "away": m['away'],
+                        "home_win": p['home_win'], "draw": p['draw'], "away_win": p['away_win'],
+                        "confidence": max(p['home_win'], p['away_win'], p['draw']),
+                        "prediction": "Local" if p['home_win'] > p['away_win'] else "Visitante",
+                        "handicap": p['expected_score'],
+                        "ah_suggestion": p['ah_suggestion'],
+                        "advice": p['advice']
+                    })
+            except Exception as e:
+                print(f"Error procesando partido {m.get('id')}: {e}")
+                continue
+    
     conn.close()
     return templates.TemplateResponse(request=request, name="pronosticos.html", context={"matches": predictions})
 

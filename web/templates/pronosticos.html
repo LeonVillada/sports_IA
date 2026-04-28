@@ -4,51 +4,217 @@
 
 {% block content %}
 <header>
-    <h2>Próximos Encuentros e IA</h2>
-    <p>Análisis de los próximos 15 días basado en volúmenes históricos.</p>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h2>Centro de Predicciones IA</h2>
+            <p>Análisis probabilístico avanzado basado en el modelo de Poisson y Hándicap Asiático.</p>
+        </div>
+        <div class="badge-status">Algoritmo V2.1 Activo</div>
+    </div>
 </header>
 
-<section class="matches-section">
-    <div class="section-header">
-        <h3>Pronósticos Generados</h3>
-        <button class="btn-sm" style="background: var(--accent-color); color: black;">Actualizar Fixtures</button>
+<div class="grid-predictions">
+    {% if not matches %}
+    <div class="stat-card" style="grid-column: 1 / -1; text-align: center; padding: 4rem;">
+        <h3 style="color: #94a3b8;">Esperando Próximos Encuentros...</h3>
+        <p>Sincroniza los fixtures para generar nuevas predicciones.</p>
     </div>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Partido</th>
-                    <th>Confianza IA</th>
-                    <th>Pronóstico</th>
-                    <th>Prob. Hándicap</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if not matches %}
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 3rem; color: #94a3b8;">
-                        No hay partidos próximos cargados. <br>
-                        <small>Sincroniza datos para ver las predicciones.</small>
-                    </td>
-                </tr>
-                {% endif %}
-                {% for match in matches %}
-                <tr>
-                    <td>{{ match.date }}</td>
-                    <td><strong>{{ match.home }} vs {{ match.away }}</strong></td>
-                    <td>
-                        <div class="progress-bar">
-                            <div class="progress" style="width: {{ match.confidence }}%"></div>
-                        </div>
-                        {{ match.confidence }}%
-                    </td>
-                    <td><span class="badge">{{ match.prediction }}</span></td>
-                    <td>{{ match.handicap }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    {% endif %}
+
+    {% for match in matches %}
+    <div class="prediction-card">
+        <div class="card-top">
+            <span class="match-date">{{ match.date }}</span>
+            <span class="match-league">{{ match.league }}</span>
+        </div>
+        
+        <div class="teams-vs">
+            <div class="team">
+                <div class="team-avatar">{{ match.home[:1] }}</div>
+                <h4>{{ match.home }}</h4>
+            </div>
+            <div class="vs">VS</div>
+            <div class="team">
+                <div class="team-avatar">{{ match.away[:1] }}</div>
+                <h4>{{ match.away }}</h4>
+            </div>
+        </div>
+
+        <div class="analysis-grid">
+            <div class="prob-box">
+                <label>Victoria Local</label>
+                <div class="mini-chart">
+                    <div class="bar" style="height: {{ match.home_win }}%; width: 100%;"></div>
+                </div>
+                <span>{{ match.home_win }}%</span>
+            </div>
+            <div class="prob-box">
+                <label>Empate</label>
+                <div class="mini-chart">
+                    <div class="bar" style="height: {{ match.draw }}%; background: #94a3b8; width: 100%;"></div>
+                </div>
+                <span>{{ match.draw }}%</span>
+            </div>
+            <div class="prob-box">
+                <label>Victoria Visitante</label>
+                <div class="mini-chart">
+                    <div class="bar" style="height: {{ match.away_win }}%; background: #f87171; width: 100%;"></div>
+                </div>
+                <span>{{ match.away_win }}%</span>
+            </div>
+        </div>
+
+        <div class="ai-footer" style="flex-direction: column; align-items: stretch; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="suggestion">
+                    <small>Sugerencia Hándicap</small>
+                    <strong>{{ match.ah_suggestion }}</strong>
+                </div>
+                <div class="score-exp">
+                    <small>Marcador Esperado</small>
+                    <strong>{{ match.handicap }}</strong>
+                </div>
+            </div>
+            
+            {% if match.advice %}
+            <div class="betting-advice" style="background: {{ match.advice.color }}20; border: 1px solid {{ match.advice.color }}; padding: 0.8rem; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <small style="color: {{ match.advice.color }}; display: block; font-size: 0.6rem; text-transform: uppercase;">Consejo de Apuesta</small>
+                    <strong style="color: {{ match.advice.color }}; font-size: 0.9rem;">{{ match.advice.label }}</strong>
+                </div>
+                <div class="stake-label" style="background: {{ match.advice.color }}; color: #0f172a; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem;">
+                    Stake {{ match.advice.stake }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
-</section>
+    {% endfor %}
+</div>
+
+<style>
+.grid-predictions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.prediction-card {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    transition: 0.3s;
+}
+
+.prediction-card:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-5px);
+}
+
+.card-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 1.5rem;
+}
+
+.teams-vs {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.team {
+    text-align: center;
+    flex: 1;
+}
+
+.team-avatar {
+    width: 45px;
+    height: 45px;
+    background: #334155;
+    border-radius: 50%;
+    margin: 0 auto 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.vs {
+    font-weight: 900;
+    color: var(--accent-color);
+    padding: 0 1rem;
+}
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: rgba(0,0,0,0.2);
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.prob-box {
+    text-align: center;
+}
+
+.prob-box label {
+    display: block;
+    font-size: 0.65rem;
+    color: #94a3b8;
+    margin-bottom: 5px;
+}
+
+.prob-box .mini-chart {
+    height: 40px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+}
+
+.prob-box span {
+    font-size: 0.8rem;
+    font-weight: bold;
+    display: block;
+    margin-top: 5px;
+}
+
+.ai-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+}
+
+.suggestion, .score-exp {
+    display: flex;
+    flex-direction: column;
+}
+
+.suggestion small, .score-exp small {
+    font-size: 0.6rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+
+.confidence-badge {
+    background: #10b98120;
+    color: #10b981;
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+</style>
 {% endblock %}

@@ -19,13 +19,15 @@ Desarrollar una plataforma de Inteligencia Artificial que prediga resultados de 
 ## 🚀 Fases del Desarrollo (Hoja de Ruta)
 ### Fase 1: Cimientos (COMPLETADO)
 - [x] Configuración de entorno y MySQL.
-- [x] Motor de ingesta de datos históricos gratuitos.
-- [x] Carga inicial de Premier League y La Liga.
+- [x] Motor de ingesta de datos históricos optimizado (Football-Data API).
+- [x] **Limpieza y Deduplicación:** Base de datos curada (~6,800 partidos limpios de las 5 grandes ligas).
+- [x] Restricción de unicidad para evitar duplicados en el futuro.
 
 ### Fase 2: El Cerebro (EN CURSO)
+- [x] Creación de interfaz web (Dashboard Premium).
 - [ ] Implementación de Distribución de Poisson (Cálculo de probabilidades).
 - [ ] Desarrollo de Red Neuronal (Deep Learning).
-- [ ] Creación de interfaz web (Dashboard).
+- [ ] Alimentación constante de datos futuros.
 
 ### Fase 3: Producto y Nube (FUTURO)
 - [ ] Despliegue en la nube (AWS/DigitalOcean).
