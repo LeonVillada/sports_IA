@@ -113,7 +113,7 @@ async def index(request: Request):
 
 @app.get("/pronosticos")
 async def pronosticos(request: Request):
-    # Sincronización rápida de fixtures al entrar (opcional, para real-time)
+    # Sincronización rápida de fixtures al entrar (opcional)
     thread = threading.Thread(target=sync_fixtures)
     thread.start()
     
@@ -122,10 +122,11 @@ async def pronosticos(request: Request):
     cursor.execute("USE sports_ai_db")
     
     strengths = calculate_team_strengths()
-    predictions = []
+    grouped_predictions = {}
+    top_picks = []
     
     if strengths:
-        # Traer partidos próximos (scheduled) de las 5 ligas
+        # Traer más partidos para cubrir las 5 ligas
         cursor.execute("""
             SELECT m.id, m.date, t1.name as home, t2.name as away, m.home_team_id, m.away_team_id, l.name as league
             FROM matches m
@@ -133,7 +134,7 @@ async def pronosticos(request: Request):
             JOIN teams t2 ON m.away_team_id = t2.id
             JOIN leagues l ON m.league_id = l.id
             WHERE m.status = 'scheduled' 
-            ORDER BY m.date ASC LIMIT 20
+            ORDER BY m.date ASC LIMIT 100
         """)
         future_matches = cursor.fetchall()
         
@@ -149,23 +150,41 @@ async def pronosticos(request: Request):
                     else:
                         date_str = "Fecha por definir"
 
-                    predictions.append({
+                    prediction_data = {
+                        "id": m['id'],
                         "date": date_str,
                         "league": m['league'],
                         "home": m['home'], "away": m['away'],
                         "home_win": p['home_win'], "draw": p['draw'], "away_win": p['away_win'],
-                        "confidence": max(p['home_win'], p['away_win'], p['draw']),
-                        "prediction": "Local" if p['home_win'] > p['away_win'] else "Visitante",
+                        "over_2_5": p['over_2_5'], "btts": p['btts'],
+                        "exp_corners": p['exp_corners'], "exp_cards": p['exp_cards'],
+                        "confidence": p['advice']['conf'] if p['advice'] else 0,
+                        "prediction": p['advice']['label'] if p['advice'] else "N/A",
                         "handicap": p['expected_score'],
                         "ah_suggestion": p['ah_suggestion'],
                         "advice": p['advice']
-                    })
+                    }
+                    
+                    # Añadir a top picks si la confianza es alta
+                    if prediction_data['confidence'] > 70:
+                        top_picks.append(prediction_data)
+
+                    league = m['league']
+                    if league not in grouped_predictions:
+                        grouped_predictions[league] = []
+                    grouped_predictions[league].append(prediction_data)
             except Exception as e:
                 print(f"Error procesando partido {m.get('id')}: {e}")
                 continue
     
+    # Ordenar Top Picks por confianza descendente
+    top_picks = sorted(top_picks, key=lambda x: x['confidence'], reverse=True)
+    
     conn.close()
-    return templates.TemplateResponse(request=request, name="pronosticos.html", context={"matches": predictions})
+    return templates.TemplateResponse(request=request, name="pronosticos.html", context={
+        "grouped_matches": grouped_predictions,
+        "top_picks": top_picks
+    })
 
 @app.get("/ligas")
 async def ligas(request: Request):

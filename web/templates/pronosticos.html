@@ -13,153 +13,423 @@
     </div>
 </header>
 
-<div class="grid-predictions">
-    {% if not matches %}
-    <div class="stat-card" style="grid-column: 1 / -1; text-align: center; padding: 4rem;">
+<div class="predictions-container">
+    {% if top_picks %}
+    <section class="top-picks-section">
+        <div class="section-title">
+            <i class="fas fa-star" style="color: #fbbf24;"></i>
+            <h2>Sugerencias de Alta Confianza</h2>
+            <p>Los pronósticos más sólidos calculados por la IA en orden descendente.</p>
+        </div>
+        <div class="top-picks-grid">
+            {% for pick in top_picks %}
+            <div class="top-pick-card" style="border-left: 4px solid {{ pick.advice.color }};">
+                <div class="pick-header">
+                    <span class="pick-market">{{ pick.advice.market }}</span>
+                    <span class="pick-conf">{{ pick.confidence }}% Confianza</span>
+                </div>
+                <div class="pick-match">
+                    <strong>{{ pick.home }}</strong> <small>vs</small> <strong>{{ pick.away }}</strong>
+                </div>
+                <div class="pick-label" style="color: {{ pick.advice.color }};">{{ pick.advice.label }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if not grouped_matches %}
+    <div class="stat-card" style="text-align: center; padding: 4rem;">
         <h3 style="color: #94a3b8;">Esperando Próximos Encuentros...</h3>
         <p>Sincroniza los fixtures para generar nuevas predicciones.</p>
     </div>
     {% endif %}
 
-    {% for match in matches %}
-    <div class="prediction-card">
-        <div class="card-top">
-            <span class="match-date">{{ match.date }}</span>
-            <span class="match-league">{{ match.league }}</span>
+    {% for league, matches in grouped_matches.items() %}
+    <div class="league-section">
+        <div class="league-header">
+            <div class="league-info">
+                <div class="league-badge">{{ league[:2].upper() }}</div>
+                <h3>{{ league }}</h3>
+            </div>
+            <span class="match-count">{{ matches|length }} Partidos próximos</span>
         </div>
         
-        <div class="teams-vs">
-            <div class="team">
-                <div class="team-avatar">{{ match.home[:1] }}</div>
-                <h4>{{ match.home }}</h4>
-            </div>
-            <div class="vs">VS</div>
-            <div class="team">
-                <div class="team-avatar">{{ match.away[:1] }}</div>
-                <h4>{{ match.away }}</h4>
-            </div>
-        </div>
+        <div class="grid-predictions">
+            {% for match in matches %}
+            <div class="prediction-card">
+                <div class="card-top">
+                    <span class="match-date">{{ match.date }}</span>
+                    <div class="confidence-indicator">
+                        <small>Confianza Global</small>
+                        <div class="conf-bar-bg">
+                            <div class="conf-bar-fill" style="width: {{ match.confidence }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="teams-vs">
+                    <div class="team">
+                        <div class="team-avatar">{{ match.home[:1] }}</div>
+                        <h4>{{ match.home }}</h4>
+                    </div>
+                    <div class="vs-container">
+                        <div class="vs-circle">VS</div>
+                    </div>
+                    <div class="team">
+                        <div class="team-avatar">{{ match.away[:1] }}</div>
+                        <h4>{{ match.away }}</h4>
+                    </div>
+                </div>
 
-        <div class="analysis-grid">
-            <div class="prob-box">
-                <label>Victoria Local</label>
-                <div class="mini-chart">
-                    <div class="bar" style="height: {{ match.home_win }}%; width: 100%;"></div>
+                <div class="stats-expanded">
+                    <div class="stat-item">
+                        <label>Over 2.5</label>
+                        <div class="stat-bar"><div class="fill" style="width: {{ match.over_2_5 }}%"></div></div>
+                        <span>{{ match.over_2_5 }}%</span>
+                    </div>
+                    <div class="stat-item">
+                        <label>BTTS (Ambos)</label>
+                        <div class="stat-bar"><div class="fill" style="width: {{ match.btts }}%; background: #fbbf24;"></div></div>
+                        <span>{{ match.btts }}%</span>
+                    </div>
+                    <div class="stat-item">
+                        <label>Córners Exp.</label>
+                        <div class="val">{{ match.exp_corners }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <label>Tarjetas Exp.</label>
+                        <div class="val">{{ match.exp_cards }}</div>
+                    </div>
                 </div>
-                <span>{{ match.home_win }}%</span>
-            </div>
-            <div class="prob-box">
-                <label>Empate</label>
-                <div class="mini-chart">
-                    <div class="bar" style="height: {{ match.draw }}%; background: #94a3b8; width: 100%;"></div>
-                </div>
-                <span>{{ match.draw }}%</span>
-            </div>
-            <div class="prob-box">
-                <label>Victoria Visitante</label>
-                <div class="mini-chart">
-                    <div class="bar" style="height: {{ match.away_win }}%; background: #f87171; width: 100%;"></div>
-                </div>
-                <span>{{ match.away_win }}%</span>
-            </div>
-        </div>
 
-        <div class="ai-footer" style="flex-direction: column; align-items: stretch; gap: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div class="suggestion">
-                    <small>Sugerencia Hándicap</small>
-                    <strong>{{ match.ah_suggestion }}</strong>
+                <div class="analysis-grid">
+                    <div class="prob-box">
+                        <label>Local</label>
+                        <div class="mini-chart">
+                            <div class="bar" style="height: {{ match.home_win }}%; width: 100%;"></div>
+                        </div>
+                        <span class="prob-val">{{ match.home_win }}%</span>
+                    </div>
+                    <div class="prob-box">
+                        <label>Empate</label>
+                        <div class="mini-chart">
+                            <div class="bar" style="height: {{ match.draw }}%; background: #64748b; width: 100%;"></div>
+                        </div>
+                        <span class="prob-val">{{ match.draw }}%</span>
+                    </div>
+                    <div class="prob-box">
+                        <label>Visita</label>
+                        <div class="mini-chart">
+                            <div class="bar" style="height: {{ match.away_win }}%; background: #ef4444; width: 100%;"></div>
+                        </div>
+                        <span class="prob-val">{{ match.away_win }}%</span>
+                    </div>
                 </div>
-                <div class="score-exp">
-                    <small>Marcador Esperado</small>
-                    <strong>{{ match.handicap }}</strong>
+
+                <div class="ai-footer">
+                    <div class="prediction-details">
+                        <div class="detail-item">
+                            <small>Sugerencia AH</small>
+                            <strong>{{ match.ah_suggestion }}</strong>
+                        </div>
+                        <div class="detail-item">
+                            <small>Marcador Exp.</small>
+                            <strong>{{ match.handicap }}</strong>
+                        </div>
+                    </div>
+                    
+                    {% if match.advice %}
+                    <div class="betting-advice" style="background: {{ match.advice.color }}15; border: 1px solid {{ match.advice.color }}40;">
+                        <div class="advice-content">
+                            <i class="fas fa-shield-alt" style="color: {{ match.advice.color }}"></i>
+                            <div class="advice-text">
+                                <small style="color: {{ match.advice.color }}">{{ match.advice.market }}</small>
+                                <strong style="color: {{ match.advice.color }}">{{ match.advice.label }}</strong>
+                            </div>
+                        </div>
+                        <div class="conf-badge" style="background: {{ match.advice.color }}">
+                            {{ match.confidence }}%
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-            
-            {% if match.advice %}
-            <div class="betting-advice" style="background: {{ match.advice.color }}20; border: 1px solid {{ match.advice.color }}; padding: 0.8rem; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <small style="color: {{ match.advice.color }}; display: block; font-size: 0.6rem; text-transform: uppercase;">Consejo de Apuesta</small>
-                    <strong style="color: {{ match.advice.color }}; font-size: 0.9rem;">{{ match.advice.label }}</strong>
-                </div>
-                <div class="stake-label" style="background: {{ match.advice.color }}; color: #0f172a; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem;">
-                    Stake {{ match.advice.stake }}
-                </div>
-            </div>
-            {% endif %}
+            {% endfor %}
         </div>
     </div>
     {% endfor %}
 </div>
 
 <style>
-.grid-predictions {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 2rem;
-    margin-top: 1rem;
+.predictions-container {
+    padding-bottom: 3rem;
 }
 
-.prediction-card {
-    background: var(--glass);
-    border: 1px solid var(--border);
-    border-radius: 20px;
+/* Top Picks Styles */
+.top-picks-section {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 30px;
+    padding: 2rem;
+    margin-bottom: 4rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.section-title {
+    margin-bottom: 2rem;
+}
+
+.section-title h2 {
+    font-size: 1.8rem;
+    margin: 0.5rem 0;
+}
+
+.section-title p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.top-picks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.top-pick-card {
+    background: rgba(15, 23, 42, 0.6);
     padding: 1.5rem;
+    border-radius: 20px;
     transition: 0.3s;
 }
 
+.top-pick-card:hover {
+    transform: scale(1.02);
+}
+
+.pick-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.pick-market {
+    font-size: 0.65rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #94a3b8;
+}
+
+.pick-conf {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.pick-match {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.pick-label {
+    font-weight: 900;
+    font-size: 1.1rem;
+}
+
+/* League Section Styles */
+.league-section {
+    margin-bottom: 4rem;
+}
+
+.league-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.league-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.league-badge {
+    background: var(--accent-color);
+    color: #0f172a;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 900;
+    font-size: 0.75rem;
+}
+
+.league-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #f8fafc;
+}
+
+.match-count {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.grid-predictions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1.5rem;
+}
+
+.prediction-card {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 1.5rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .prediction-card:hover {
+    transform: translateY(-8px);
     border-color: var(--accent-color);
-    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
 .card-top {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.match-date {
     font-size: 0.75rem;
     color: #94a3b8;
-    margin-bottom: 1.5rem;
+    background: rgba(255,255,255,0.05);
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.confidence-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100px;
+}
+
+.confidence-indicator small {
+    font-size: 0.6rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.conf-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.conf-bar-fill {
+    height: 100%;
+    background: var(--accent-color);
+    border-radius: 2px;
 }
 
 .teams-vs {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .team {
-    text-align: center;
     flex: 1;
+    text-align: center;
 }
 
 .team-avatar {
-    width: 45px;
-    height: 45px;
-    background: #334155;
-    border-radius: 50%;
-    margin: 0 auto 0.5rem;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+    border-radius: 16px;
+    margin: 0 auto 0.8rem;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
+    color: var(--accent-color);
+    border: 1px solid rgba(255,255,255,0.05);
 }
 
-.vs {
-    font-weight: 900;
-    color: var(--accent-color);
+.vs-container {
     padding: 0 1rem;
+}
+
+.vs-circle {
+    width: 32px;
+    height: 32px;
+    background: #0f172a;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 900;
+}
+
+/* Expanded Stats Styles */
+.stats-expanded {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: 16px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-item label {
+    font-size: 0.6rem;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.stat-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.stat-bar .fill {
+    height: 100%;
+    background: var(--accent-color);
+}
+
+.stat-item span, .stat-item .val {
+    font-size: 0.8rem;
+    font-weight: bold;
 }
 
 .analysis-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    background: rgba(0,0,0,0.2);
-    padding: 1rem;
-    border-radius: 12px;
-    margin-bottom: 1.5rem;
+    gap: 12px;
+    margin-bottom: 2rem;
 }
 
 .prob-box {
@@ -169,52 +439,92 @@
 .prob-box label {
     display: block;
     font-size: 0.65rem;
-    color: #94a3b8;
-    margin-bottom: 5px;
+    color: #64748b;
+    margin-bottom: 6px;
 }
 
-.prob-box .mini-chart {
-    height: 40px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 4px;
+.mini-chart {
+    height: 32px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
     overflow: hidden;
     display: flex;
     align-items: flex-end;
 }
 
-.prob-box span {
-    font-size: 0.8rem;
-    font-weight: bold;
+.bar {
+    background: var(--accent-color);
+    transition: height 1s ease-out;
+}
+
+.prob-val {
     display: block;
-    margin-top: 5px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    margin-top: 6px;
 }
 
 .ai-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid var(--border);
-    padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 1.5rem;
 }
 
-.suggestion, .score-exp {
+.prediction-details {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.2rem;
+}
+
+.detail-item {
     display: flex;
     flex-direction: column;
 }
 
-.suggestion small, .score-exp small {
+.detail-item small {
     font-size: 0.6rem;
-    color: #94a3b8;
+    color: #64748b;
     text-transform: uppercase;
 }
 
-.confidence-badge {
-    background: #10b98120;
-    color: #10b981;
-    padding: 0.4rem 0.8rem;
-    border-radius: 8px;
+.detail-item strong {
+    font-size: 0.9rem;
+    color: #f8fafc;
+}
+
+.betting-advice {
+    padding: 1rem;
+    border-radius: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.advice-content {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.advice-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.advice-text small {
+    font-size: 0.55rem;
+    letter-spacing: 0.5px;
+}
+
+.advice-text strong {
+    font-size: 0.85rem;
+}
+
+.conf-badge {
+    color: #0f172a;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-weight: 900;
     font-size: 0.75rem;
-    font-weight: bold;
 }
 </style>
 {% endblock %}
