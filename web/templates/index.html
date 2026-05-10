@@ -9,15 +9,24 @@
         <div class="stat-card">
             <p>Partidos en DB</p>
             <h3>{{ stats.matches }}</h3>
+            <span class="sub-text">Última Sinc: {{ system.last_sync }}</span>
         </div>
         <div class="stat-card">
             <p>Equipos Mapeados</p>
             <h3>{{ stats.teams }}</h3>
+            <span class="sub-text">5 Grandes Ligas</span>
         </div>
         <div class="stat-card Confianza">
-            <p>Confianza IA</p>
-            <h3>84.2%</h3>
+            <p>Precisión IA</p>
+            <h3>{{ system.last_accuracy }}%</h3>
+            <span class="sub-text">Evaluación Reciente</span>
         </div>
+        {% if system.is_syncing %}
+        <div class="stat-card syncing">
+            <p>Estado</p>
+            <h3 class="pulse">Sincronizando...</h3>
+        </div>
+        {% endif %}
     </div>
 </header>
 

@@ -33,11 +33,17 @@ def download_and_import_massive():
                 response = requests.get(url, timeout=10)
                 if response.status_code == 200:
                     df = pd.read_csv(StringIO(response.text))
+                    # Forzar el nombre de la primera columna para evitar errores de BOM/codificación
+                    df.rename(columns={df.columns[0]: 'Div'}, inplace=True)
                     # Filtrar filas vacías
                     df = df.dropna(subset=['HomeTeam', 'AwayTeam'])
                     
                     for index, row in df.iterrows():
                         try:
+                            # Debug: Solo imprimir si es reciente
+                            if 'Date' in row and str(row['Date']).endswith('2026'):
+                                pass # print(f"Procesando: {row['Date']} - {row['HomeTeam']}")
+                            
                             # Liga (Mapear código a nombre real)
                             league_code = row['Div']
                             league_name = LEAGUE_MAP.get(league_code, league_code)
@@ -78,35 +84,58 @@ def download_and_import_massive():
                             # Reemplazar NaNs por None para MySQL
                             stats = {k: (None if pd.isna(v) else v) for k, v in stats.items()}
 
-                            sql_match = """
-                                INSERT INTO matches (
-                                    date, league_id, home_team_id, away_team_id, home_goals, away_goals, 
-                                    ht_home_goals, ht_away_goals, home_shots, away_shots, 
-                                    home_shots_on_target, away_shots_on_target, home_corners, away_corners, 
-                                    home_fouls, away_fouls, home_yellow_cards, away_yellow_cards, 
-                                    home_red_cards, away_red_cards, status, season
-                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                ON DUPLICATE KEY UPDATE 
-                                    home_goals=VALUES(home_goals), away_goals=VALUES(away_goals),
-                                    ht_home_goals=VALUES(ht_home_goals), ht_away_goals=VALUES(ht_away_goals),
-                                    home_shots=VALUES(home_shots), away_shots=VALUES(away_shots),
-                                    home_shots_on_target=VALUES(home_shots_on_target), away_shots_on_target=VALUES(away_shots_on_target),
-                                    home_corners=VALUES(home_corners), away_corners=VALUES(away_corners),
-                                    home_fouls=VALUES(home_fouls), away_fouls=VALUES(away_fouls),
-                                    home_yellow_cards=VALUES(home_yellow_cards), away_yellow_cards=VALUES(away_yellow_cards),
-                                    home_red_cards=VALUES(home_red_cards), away_red_cards=VALUES(away_red_cards)
-                            """
-                            cursor.execute(sql_match, (
-                                date_val, league_id, home_id, away_id, row['FTHG'], row['FTAG'],
-                                stats['ht_home_goals'], stats['ht_away_goals'], stats['home_shots'], stats['away_shots'],
-                                stats['home_shots_on_target'], stats['away_shots_on_target'], stats['home_corners'], stats['away_corners'],
-                                stats['home_fouls'], stats['away_fouls'], stats['home_yellow_cards'], stats['away_yellow_cards'],
-                                stats['home_red_cards'], stats['away_red_cards'], 'finished', season
-                            ))
-                            
-                            # Obtener ID para las cuotas
-                            cursor.execute("SELECT id FROM matches WHERE date=%s AND home_team_id=%s", (date_val, home_id))
-                            match_id = cursor.fetchone()[0]
+                            # Buscar si ya existe el partido ese mismo día (ignorar la hora de las fixtures)
+                            date_only = pd.to_datetime(row['Date'], dayfirst=True).strftime('%Y-%m-%d')
+                            cursor.execute("""
+                                SELECT id FROM matches 
+                                WHERE DATE(date) = %s AND home_team_id = %s AND away_team_id = %s
+                            """, (date_only, home_id, away_id))
+                            existing_match = cursor.fetchone()
+
+                            if existing_match:
+                                print(f"ACTUALIZANDO: {league_name} - {row['HomeTeam']} vs {row['AwayTeam']} ({date_only})")
+                                match_id = existing_match[0]
+                                sql_match = """
+                                    UPDATE matches SET 
+                                        home_goals=%s, away_goals=%s,
+                                        ht_home_goals=%s, ht_away_goals=%s,
+                                        home_shots=%s, away_shots=%s,
+                                        home_shots_on_target=%s, away_shots_on_target=%s,
+                                        home_corners=%s, away_corners=%s,
+                                        home_fouls=%s, away_fouls=%s,
+                                        home_yellow_cards=%s, away_yellow_cards=%s,
+                                        home_red_cards=%s, away_red_cards=%s,
+                                        status='finished', season=%s
+                                    WHERE id=%s
+                                """
+                                cursor.execute(sql_match, (
+                                    row['FTHG'], row['FTAG'],
+                                    stats['ht_home_goals'], stats['ht_away_goals'], stats['home_shots'], stats['away_shots'],
+                                    stats['home_shots_on_target'], stats['away_shots_on_target'], stats['home_corners'], stats['away_corners'],
+                                    stats['home_fouls'], stats['away_fouls'], stats['home_yellow_cards'], stats['away_yellow_cards'],
+                                    stats['home_red_cards'], stats['away_red_cards'], season, match_id
+                                ))
+                            else:
+                                if date_only >= '2026-05-01':
+                                    print(f"NUEVO/NO ENCONTRADO: {row['HomeTeam']} vs {row['AwayTeam']} ({date_only}) | HomeID: {home_id}, AwayID: {away_id}")
+                                sql_match = """
+                                    INSERT INTO matches (
+                                        date, league_id, home_team_id, away_team_id, home_goals, away_goals, 
+                                        ht_home_goals, ht_away_goals, home_shots, away_shots, 
+                                        home_shots_on_target, away_shots_on_target, home_corners, away_corners, 
+                                        home_fouls, away_fouls, home_yellow_cards, away_yellow_cards, 
+                                        home_red_cards, away_red_cards, status, season
+                                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """
+                                cursor.execute(sql_match, (
+                                    date_val, league_id, home_id, away_id, row['FTHG'], row['FTAG'],
+                                    stats['ht_home_goals'], stats['ht_away_goals'], stats['home_shots'], stats['away_shots'],
+                                    stats['home_shots_on_target'], stats['away_shots_on_target'], stats['home_corners'], stats['away_corners'],
+                                    stats['home_fouls'], stats['away_fouls'], stats['home_yellow_cards'], stats['away_yellow_cards'],
+                                    stats['home_red_cards'], stats['away_red_cards'], 'finished', season
+                                ))
+                                cursor.execute("SELECT LAST_INSERT_ID()")
+                                match_id = cursor.fetchone()[0]
                             
                             # Cuotas de Bet365 (B365)
                             if 'B365H' in row and not pd.isna(row['B365H']) and not pd.isna(row['B365D']) and not pd.isna(row['B365A']):
@@ -124,6 +153,7 @@ def download_and_import_massive():
                                     WHERE match_id=%s AND bookmaker='Bet365'
                                 """, (ah_line, ah_home, ah_away, match_id))
                         except Exception as e:
+                            print(f"Error procesando fila {index}: {e}")
                             continue
                     
                     conn.commit()

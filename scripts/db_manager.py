@@ -59,6 +59,21 @@ def setup_database():
             )
         """)
         cursor.execute("CREATE TABLE IF NOT EXISTS odds (id INT AUTO_INCREMENT PRIMARY KEY, match_id INT, bookmaker VARCHAR(50), home_win_odds FLOAT, draw_odds FLOAT, away_win_odds FLOAT, handicap_line FLOAT, home_handicap_odds FLOAT, away_handicap_odds FLOAT, FOREIGN KEY (match_id) REFERENCES matches(id))")
+        
+        # Nueva tabla para retroalimentación
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS predictions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                match_id INT,
+                market VARCHAR(50),
+                prediction_label VARCHAR(100),
+                confidence FLOAT,
+                is_hit BOOLEAN DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (match_id) REFERENCES matches(id),
+                UNIQUE KEY unique_prediction (match_id, market)
+            )
+        """)
         print("Base de datos y tablas creadas exitosamente.")
     except Error as e:
         print(f"Error al crear tablas: {e}")

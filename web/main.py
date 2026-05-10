@@ -14,6 +14,9 @@ sys.path.append(BASE_DIR)
 from scripts.db_manager import create_connection
 from scripts.poisson_model import calculate_team_strengths, predict_match
 from scripts.ingestion import sync_fixtures, download_and_import_massive
+from scripts.evaluate_results import evaluate_recent_matches
+from scripts.learning_module import train_adjustment_factors
+from datetime import datetime
 
 app = FastAPI(title="Sports AI Service")
 
@@ -30,10 +33,53 @@ async def favicon():
 async def chrome_devtools():
     return {"status": "ok"}
 
+# --- ESTADO GLOBAL ---
+system_status = {
+    "last_sync": "No sincronizado",
+    "is_syncing": False,
+    "last_accuracy": 0
+}
+
+def run_startup_sync():
+    """Orquestación completa de actualización y retroalimentación"""
+    global system_status
+    system_status["is_syncing"] = True
+    print("\n[STARTUP] Iniciando sincronización integral...")
+    
+    try:
+        # 1. Sincronizar fixtures (próximos partidos)
+        sync_fixtures()
+        
+        # 2. Actualizar resultados de partidos finalizados
+        download_and_import_massive()
+        
+        # 3. Evaluar predicciones pasadas (marcar aciertos/fallos)
+        eval_stats = evaluate_recent_matches(days=14, silent=True)
+        if eval_stats and eval_stats["total"] > 0:
+            system_status["last_accuracy"] = round((eval_stats["hits"] / eval_stats["total"]) * 100, 1)
+        
+        # 4. Ajustar factores de la neurona (aprendizaje)
+        train_adjustment_factors(silent=True)
+        
+        system_status["last_sync"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+        print(f"[STARTUP] Sincronización finalizada con éxito. Precisión detectada: {system_status['last_accuracy']}%")
+    except Exception as e:
+        print(f"[STARTUP] ERROR en sincronización: {e}")
+    finally:
+        system_status["is_syncing"] = False
+
+@app.on_event("startup")
+async def startup_event():
+    # Ejecutar en hilo separado para no bloquear el inicio del servidor
+    thread = threading.Thread(target=run_startup_sync)
+    thread.start()
+
 # --- RUTAS DE SINCRONIZACIÓN ---
 @app.get("/sync")
 async def sync_data(request: Request):
-    thread = threading.Thread(target=download_and_import_massive)
+    if system_status["is_syncing"]:
+        return {"status": "Sync already in progress"}
+    thread = threading.Thread(target=run_startup_sync)
     thread.start()
     return {"status": "Sync started in background"}
 
@@ -109,7 +155,11 @@ async def index(request: Request):
     matches = cursor.fetchall()
     conn.close()
     stats = get_db_stats()
-    return templates.TemplateResponse(request=request, name="index.html", context={"matches": matches, "stats": stats})
+    return templates.TemplateResponse(request=request, name="index.html", context={
+        "matches": matches, 
+        "stats": stats,
+        "system": system_status
+    })
 
 @app.get("/pronosticos")
 async def pronosticos(request: Request):
@@ -133,7 +183,7 @@ async def pronosticos(request: Request):
             JOIN teams t1 ON m.home_team_id = t1.id
             JOIN teams t2 ON m.away_team_id = t2.id
             JOIN leagues l ON m.league_id = l.id
-            WHERE m.status = 'scheduled' 
+            WHERE m.status = 'scheduled' AND m.date > NOW()
             ORDER BY m.date ASC LIMIT 100
         """)
         future_matches = cursor.fetchall()
@@ -183,7 +233,8 @@ async def pronosticos(request: Request):
     conn.close()
     return templates.TemplateResponse(request=request, name="pronosticos.html", context={
         "grouped_matches": grouped_predictions,
-        "top_picks": top_picks
+        "top_picks": top_picks,
+        "system": system_status
     })
 
 @app.get("/ligas")
@@ -217,6 +268,71 @@ async def modelos(request: Request):
 @app.get("/historico")
 async def historico(request: Request):
     return templates.TemplateResponse(request=request, name="historico.html", context={})
+
+@app.get("/review")
+async def review(request: Request):
+    conn = create_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("USE sports_ai_db")
+    
+    # Obtener estadísticas de la tabla de predicciones
+    cursor.execute("""
+        SELECT market, 
+               COUNT(*) as total, 
+               SUM(CASE WHEN is_hit = 1 THEN 1 ELSE 0 END) as hits
+        FROM predictions
+        GROUP BY market
+    """)
+    stats_raw = cursor.fetchall()
+    
+    # Obtener los 10 mejores equipos por aciertos
+    cursor.execute("""
+        SELECT t.name, COUNT(*) as total, SUM(is_hit) as hits, 
+               ROUND(SUM(is_hit)/COUNT(*)*100, 1) as accuracy
+        FROM predictions p
+        JOIN matches m ON p.match_id = m.id
+        JOIN teams t ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+        WHERE p.is_hit IS NOT NULL
+        GROUP BY t.id
+        ORDER BY hits DESC, accuracy DESC
+        LIMIT 10
+    """)
+    top_teams = cursor.fetchall()
+
+    # Obtener el mercado más predecible
+    cursor.execute("""
+        SELECT market, COUNT(*) as total, SUM(is_hit) as hits,
+               ROUND(SUM(is_hit)/COUNT(*)*100, 1) as accuracy
+        FROM predictions
+        WHERE is_hit IS NOT NULL
+        GROUP BY market
+        ORDER BY accuracy DESC
+    """)
+    market_stats = cursor.fetchall()
+
+    # Obtener los últimos 50 resultados evaluados
+    cursor.execute("""
+        SELECT p.*, m.date, t1.name as home, t2.name as away, m.home_goals, m.away_goals
+        FROM predictions p
+        JOIN matches m ON p.match_id = m.id
+        JOIN teams t1 ON m.home_team_id = t1.id
+        JOIN teams t2 ON m.away_team_id = t2.id
+        ORDER BY m.date DESC LIMIT 50
+    """)
+    recent_reviews = cursor.fetchall()
+    conn.close()
+    
+    total_evals = sum([m['total'] for m in market_stats])
+    total_hits = sum([m['hits'] for m in market_stats])
+    global_accuracy = (total_hits / total_evals * 100) if total_evals > 0 else 0
+    
+    return templates.TemplateResponse(request=request, name="review.html", context={
+        "stats": market_stats,
+        "top_teams": top_teams,
+        "total_evals": total_evals,
+        "global_accuracy": round(global_accuracy, 1),
+        "recent_reviews": recent_reviews
+    })
 
 if __name__ == "__main__":
     uvicorn.run("web.main:app", host="0.0.0.0", port=8080, reload=True)

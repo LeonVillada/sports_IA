@@ -2,6 +2,10 @@ import pandas as pd
 import numpy as np
 from scipy.stats import poisson
 from scripts.db_manager import create_connection
+try:
+    from scripts.learning_module import get_adjusted_confidence
+except ImportError:
+    def get_adjusted_confidence(market, conf): return conf
 
 def calculate_team_strengths(limit_matches=20):
     conn = create_connection()
@@ -108,23 +112,29 @@ def get_betting_advice(p):
     
     # Sugerencia de Resultado
     if p['home_win'] > 70:
-        advices.append({"market": "1X2", "label": "Local Fuerte", "conf": p['home_win'], "color": "#10b981"})
+        adj_conf = get_adjusted_confidence("1X2", p['home_win'])
+        advices.append({"market": "1X2", "label": "Local Fuerte", "conf": adj_conf, "color": "#10b981"})
     elif p['away_win'] > 70:
-        advices.append({"market": "1X2", "label": "Visitante Fuerte", "conf": p['away_win'], "color": "#f87171"})
+        adj_conf = get_adjusted_confidence("1X2", p['away_win'])
+        advices.append({"market": "1X2", "label": "Visitante Fuerte", "conf": adj_conf, "color": "#f87171"})
     
     # Sugerencia de Goles
     if p['over_2_5'] > 65:
-        advices.append({"market": "Goles", "label": "Over 2.5 Goles", "conf": p['over_2_5'], "color": "#38bdf8"})
+        adj_conf = get_adjusted_confidence("Goles", p['over_2_5'])
+        advices.append({"market": "Goles", "label": "Over 2.5 Goles", "conf": adj_conf, "color": "#38bdf8"})
     elif p['over_2_5'] < 35:
-        advices.append({"market": "Goles", "label": "Under 2.5 Goles", "conf": 100 - p['over_2_5'], "color": "#94a3b8"})
+        adj_conf = get_adjusted_confidence("Goles", 100 - p['over_2_5'])
+        advices.append({"market": "Goles", "label": "Under 2.5 Goles", "conf": adj_conf, "color": "#94a3b8"})
         
     # Sugerencia Ambos Marcan
     if p['btts'] > 65:
-        advices.append({"market": "BTTS", "label": "Ambos Marcan: SÍ", "conf": p['btts'], "color": "#fbbf24"})
+        adj_conf = get_adjusted_confidence("BTTS", p['btts'])
+        advices.append({"market": "BTTS", "label": "Ambos Marcan: SÍ", "conf": adj_conf, "color": "#fbbf24"})
 
     # Sugerencia de Córners
     if p['exp_corners'] > 10.5:
-        advices.append({"market": "Córners", "label": "Más de 9.5 Córners", "conf": 75, "color": "#818cf8"})
+        adj_conf = get_adjusted_confidence("Córners", 75)
+        advices.append({"market": "Córners", "label": "Más de 9.5 Córners", "conf": adj_conf, "color": "#818cf8"})
 
     # Ordenar por confianza
     advices = sorted(advices, key=lambda x: x['conf'], reverse=True)

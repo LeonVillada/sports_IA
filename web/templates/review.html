@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Retroalimentación IA{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .stat-card-rev {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        text-align: center;
+    }
+    .stat-value-rev {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 10px 0;
+        background: linear-gradient(45deg, #10b981, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .stat-label-rev {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .review-table-container {
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+    }
+    .review-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .review-table th {
+        text-align: left;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.03);
+        color: #94a3b8;
+        font-weight: 600;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .review-table td {
+        padding: 15px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        font-size: 0.95rem;
+    }
+    .badge-hit { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .badge-miss { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+    
+    .market-tag {
+        font-size: 0.7rem;
+        background: rgba(255,255,255,0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-right: 5px;
+        color: #cbd5e1;
+    }
+    .progress-bar-small {
+        width: 100%;
+        height: 6px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 5px 0;
+    }
+    .progress-fill {
+        height: 100%;
+        transition: width 0.5s ease-in-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="top-header">
+    <h1>Retroalimentación de la Neurona</h1>
+    <p style="color: #64748b;">La IA aprende de cada acierto y desacierto automáticamente al iniciar el servidor.</p>
+</header>
+
+<div class="stats-grid">
+    <div class="stat-card-rev">
+        <div class="stat-label-rev">Precisión Global</div>
+        <div class="stat-value-rev">{{ global_accuracy }}%</div>
+        <div style="font-size: 0.8rem; color: #64748b;">Total Evaluados: {{ total_evals }}</div>
+    </div>
+    {% for s in stats %}
+    <div class="stat-card-rev">
+        <div class="stat-label-rev">{{ s.market }}</div>
+        <div class="stat-value-rev">{{ s.accuracy }}%</div>
+        <div style="font-size: 0.8rem; color: #64748b;">{{ s.hits }}/{{ s.total }} Aciertos</div>
+    </div>
+    {% endfor %}
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+    <section class="review-table-container">
+        <div style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <h3 style="margin:0;"><i class="fas fa-star" style="color:#fbbf24;"></i> Equipos más "Predecibles"</h3>
+        </div>
+        <table class="review-table">
+            <thead>
+                <tr>
+                    <th>Equipo</th>
+                    <th>Evaluados</th>
+                    <th>Aciertos</th>
+                    <th>Precisión</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in top_teams %}
+                <tr>
+                    <td>{{ t.name }}</td>
+                    <td>{{ t.total }}</td>
+                    <td style="color:#10b981;">{{ t.hits }}</td>
+                    <td style="font-weight:700;">{{ t.accuracy }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="review-table-container" style="padding: 25px;">
+        <h3 style="margin-top:0;"><i class="fas fa-chart-line" style="color:#3b82f6;"></i> Mercados con Mayor Acierto</h3>
+        {% for s in stats %}
+        <div style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-weight: 600;">{{ s.market }}</span>
+                <span style="color: #10b981;">{{ s.accuracy }}%</span>
+            </div>
+            <div class="progress-bar-small">
+                <div class="progress-fill" style="width: {{ s.accuracy }}%; background: linear-gradient(90deg, #3b82f6, #10b981);"></div>
+            </div>
+        </div>
+        {% endfor %}
+        <p style="color: #64748b; font-size: 0.85rem; margin-top: 20px;">
+            * Basado en el historial de aciertos y la confianza ajustada por el módulo de aprendizaje.
+        </p>
+    </section>
+</div>
+
+<h3 style="margin: 20px 0;"><i class="fas fa-history"></i> Últimas Predicciones Evaluadas</h3>
+<section class="review-table-container">
+    <table class="review-table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Partido</th>
+                <th>Resultado</th>
+                <th>Predicción</th>
+                <th>Confianza</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in recent_reviews %}
+            <tr>
+                <td style="color: #64748b;">{{ r.date.strftime('%d/%m/%Y') }}</td>
+                <td>
+                    <div style="font-weight: 600;">{{ r.home }} vs {{ r.away }}</div>
+                </td>
+                <td style="letter-spacing: 2px; font-weight: 700;">
+                    {{ r.home_goals }} - {{ r.away_goals }}
+                </td>
+                <td>
+                    <span class="market-tag">{{ r.market }}</span>
+                    {{ r.prediction_label }}
+                </td>
+                <td>
+                    <div class="progress-bar-small">
+                        <div class="progress-fill" style="width: {{ r.confidence }}%; background: #3b82f6;"></div>
+                    </div>
+                    <span style="font-size: 0.8rem;">{{ r.confidence }}%</span>
+                </td>
+                <td>
+                    {% if r.is_hit %}
+                    <span class="badge badge-hit">ACIERTO</span>
+                    {% else %}
+                    <span class="badge badge-miss">FALLO</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

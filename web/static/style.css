@@ -401,3 +401,26 @@ td {
     font-style: italic;
     font-size: 0.8rem;
 }
+
+.sub-text {
+    display: block;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 5px;
+}
+
+.stat-card.syncing {
+    border-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.05);
+}
+
+.pulse {
+    animation: pulse-animation 2s infinite;
+    color: #fbbf24;
+}
+
+@keyframes pulse-animation {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
