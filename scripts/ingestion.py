@@ -2,7 +2,9 @@ import pandas as pd
 import requests
 import os
 from scripts.db_manager import create_connection
+from scripts.config import load_config
 from io import StringIO
+from datetime import datetime, timedelta
 
 # Mapeo de códigos de football-data.co.uk a nombres reales
 LEAGUE_MAP = {
@@ -24,6 +26,17 @@ def download_and_import_massive():
     cursor = conn.cursor(buffered=True)
     cursor.execute("USE sports_ai_db")
     
+    config = load_config()
+    # Para tener un margen de seguridad, buscaremos desde 3 días antes del último sync
+    try:
+        last_sync_obj = datetime.strptime(config.get("last_sync_date", "2024-01-01"), "%Y-%m-%d")
+        safe_date_obj = last_sync_obj - timedelta(days=3)
+        safe_date_str = safe_date_obj.strftime("%Y-%m-%d")
+    except ValueError:
+        safe_date_str = "2024-01-01"
+    
+    print(f"Buscando partidos a partir de la fecha segura: {safe_date_str}...")
+
     for season in SEASONS:
         for league in LEAGUES:
             url = f"https://www.football-data.co.uk/mmz4281/{season}/{league}.csv"
@@ -37,6 +50,14 @@ def download_and_import_massive():
                     df.rename(columns={df.columns[0]: 'Div'}, inplace=True)
                     # Filtrar filas vacías
                     df = df.dropna(subset=['HomeTeam', 'AwayTeam'])
+                    
+                    # Convertir Date a datetime para poder filtrar
+                    df['Date_Parsed'] = pd.to_datetime(df['Date'], dayfirst=True)
+                    
+                    # Filtrar las filas anteriores a la fecha segura (incremental sync)
+                    original_len = len(df)
+                    df = df[df['Date_Parsed'] >= safe_date_str]
+                    print(f"  -> Filtrados {original_len - len(df)} partidos antiguos. Procesando {len(df)} partidos nuevos/recientes.")
                     
                     for index, row in df.iterrows():
                         try:

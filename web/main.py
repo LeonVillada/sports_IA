@@ -16,6 +16,7 @@ from scripts.poisson_model import calculate_team_strengths, predict_match
 from scripts.ingestion import sync_fixtures, download_and_import_massive
 from scripts.evaluate_results import evaluate_recent_matches
 from scripts.learning_module import train_adjustment_factors
+from scripts.config import load_config, save_config
 from datetime import datetime
 
 app = FastAPI(title="Sports AI Service")
@@ -34,10 +35,11 @@ async def chrome_devtools():
     return {"status": "ok"}
 
 # --- ESTADO GLOBAL ---
+config_data = load_config()
 system_status = {
-    "last_sync": "No sincronizado",
+    "last_sync": config_data.get("last_sync_time_str", "No sincronizado"),
     "is_syncing": False,
-    "last_accuracy": 0
+    "last_accuracy": config_data.get("last_accuracy", 0)
 }
 
 def run_startup_sync():
@@ -62,11 +64,22 @@ def run_startup_sync():
         train_adjustment_factors(silent=True)
         
         system_status["last_sync"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+        
+        # Save to config persistently
+        config_data = load_config()
+        config_data["last_sync_date"] = datetime.now().strftime("%Y-%m-%d")
+        config_data["last_sync_time_str"] = system_status["last_sync"]
+        config_data["last_accuracy"] = system_status["last_accuracy"]
+        save_config(config_data)
+        
         print(f"[STARTUP] Sincronización finalizada con éxito. Precisión detectada: {system_status['last_accuracy']}%")
     except Exception as e:
         print(f"[STARTUP] ERROR en sincronización: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         system_status["is_syncing"] = False
+        print("[STARTUP] Proceso de sincronización terminado (estado is_syncing reseteado).")
 
 @app.on_event("startup")
 async def startup_event():
@@ -141,6 +154,7 @@ async def index(request: Request):
                m.home_fouls, m.away_fouls,
                m.home_yellow_cards, m.away_yellow_cards,
                m.home_red_cards, m.away_red_cards,
+               m.status,
                o.home_win_odds, o.draw_odds, o.away_win_odds,
                o.handicap_line, o.home_handicap_odds, o.away_handicap_odds
         FROM matches m
@@ -149,7 +163,8 @@ async def index(request: Request):
         JOIN teams t2 ON m.away_team_id = t2.id
         LEFT JOIN odds o ON m.id = o.match_id
         WHERE l.name IN ('Premier League', 'La Liga', 'Bundesliga', 'Ligue 1', 'Serie A')
-        ORDER BY m.date DESC LIMIT 20
+        ORDER BY (DATE(m.date) = CURRENT_DATE()) DESC, (m.status = 'finished') DESC, m.date DESC 
+        LIMIT 20
     """
     cursor.execute(query)
     matches = cursor.fetchall()
@@ -173,6 +188,7 @@ async def pronosticos(request: Request):
     
     strengths = calculate_team_strengths()
     grouped_predictions = {}
+    all_predictions = []
     top_picks = []
     
     if strengths:
@@ -223,6 +239,7 @@ async def pronosticos(request: Request):
                     if league not in grouped_predictions:
                         grouped_predictions[league] = []
                     grouped_predictions[league].append(prediction_data)
+                    all_predictions.append(prediction_data)
             except Exception as e:
                 print(f"Error procesando partido {m.get('id')}: {e}")
                 continue
@@ -233,6 +250,7 @@ async def pronosticos(request: Request):
     conn.close()
     return templates.TemplateResponse(request=request, name="pronosticos.html", context={
         "grouped_matches": grouped_predictions,
+        "all_predictions": all_predictions,
         "top_picks": top_picks,
         "system": system_status
     })
