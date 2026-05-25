@@ -6,6 +6,7 @@
     <title>Sports AI | {% block title %}Dashboard{% endblock %}</title>
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -25,6 +26,26 @@
                     <li onclick="location.href='/historico'" class="{{ 'active' if request.url.path == '/historico' else '' }}">Histórico</li>
                 </ul>
             </nav>
+
+            <!-- Panel de Sincronización Manual -->
+            <div class="sync-panel">
+                <div class="sync-meta">
+                    <div class="sync-meta-row">
+                        <i class="fas fa-clock" style="color: #64748b; font-size: 0.7rem;"></i>
+                        <span id="sidebarLastSync" class="sync-meta-label">Cargando...</span>
+                    </div>
+                    <div class="sync-meta-row">
+                        <i class="fas fa-bullseye" style="color: #64748b; font-size: 0.7rem;"></i>
+                        <span id="sidebarAccuracy" class="sync-meta-label">--%</span>
+                    </div>
+                </div>
+                <button id="syncBtn" class="sync-button" onclick="triggerSync()">
+                    <i id="syncIcon" class="fas fa-rotate-right"></i>
+                    <span id="syncLabel">Sincronizar</span>
+                </button>
+                <div id="syncStatusMsg" class="sync-status-msg" style="display:none;"></div>
+            </div>
+
             <div class="user-profile">
                 <div class="avatar"></div>
                 <div class="user-info">
@@ -39,5 +60,234 @@
         </main>
     </div>
     {% block extra_js %}{% endblock %}
+
+    <style>
+    .sync-panel {
+        margin: 0 0 1.5rem 0;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+    }
+
+    .sync-meta {
+        margin-bottom: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .sync-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .sync-meta-label {
+        font-size: 0.7rem;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sync-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 0.6rem 1rem;
+        background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .sync-button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(14, 165, 233, 0.35);
+    }
+
+    .sync-button:disabled {
+        background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+        cursor: not-allowed;
+        opacity: 0.8;
+    }
+
+    .sync-button.syncing {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .sync-button.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .sync-button.error {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .spinning {
+        animation: spin 1s linear infinite;
+    }
+
+    .sync-status-msg {
+        margin-top: 0.6rem;
+        font-size: 0.65rem;
+        color: #94a3b8;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+    </style>
+
+    <script>
+    let syncPollingInterval = null;
+
+    async function triggerSync() {
+        const btn = document.getElementById('syncBtn');
+        const icon = document.getElementById('syncIcon');
+        const label = document.getElementById('syncLabel');
+        const statusMsg = document.getElementById('syncStatusMsg');
+
+        // Estado: iniciando
+        btn.disabled = true;
+        btn.className = 'sync-button syncing';
+        icon.className = 'fas fa-rotate-right spinning';
+        label.textContent = 'Sincronizando...';
+        statusMsg.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/sync', { method: 'POST' });
+            const data = await res.json();
+
+            if (res.status === 409) {
+                // Ya está sincronizando
+                statusMsg.textContent = data.message;
+                statusMsg.style.display = 'block';
+                startPolling();
+                return;
+            }
+
+            // Empezar polling para ver cuándo termina
+            startPolling();
+
+        } catch (e) {
+            btn.disabled = false;
+            btn.className = 'sync-button error';
+            icon.className = 'fas fa-triangle-exclamation';
+            label.textContent = 'Error de red';
+            statusMsg.textContent = 'No se pudo conectar con el servidor.';
+            statusMsg.style.display = 'block';
+        }
+    }
+
+    function startPolling() {
+        // Limpiar polling anterior si existe
+        if (syncPollingInterval) clearInterval(syncPollingInterval);
+
+        syncPollingInterval = setInterval(async () => {
+            try {
+                const res = await fetch('/api/sync/status');
+                const data = await res.json();
+                updateSidebarStatus(data);
+
+                if (!data.is_syncing) {
+                    // Sincronización terminó
+                    clearInterval(syncPollingInterval);
+                    syncPollingInterval = null;
+                    onSyncComplete(data);
+                }
+            } catch (e) {
+                // Ignorar errores de polling
+            }
+        }, 2500);
+    }
+
+    function updateSidebarStatus(data) {
+        const lastSyncEl = document.getElementById('sidebarLastSync');
+        const accuracyEl = document.getElementById('sidebarAccuracy');
+        if (lastSyncEl) lastSyncEl.textContent = data.last_sync || 'No sincronizado';
+        if (accuracyEl) accuracyEl.textContent = data.last_accuracy ? `${data.last_accuracy}% precisión` : '--%';
+    }
+
+    function onSyncComplete(data) {
+        const btn = document.getElementById('syncBtn');
+        const icon = document.getElementById('syncIcon');
+        const label = document.getElementById('syncLabel');
+        const statusMsg = document.getElementById('syncStatusMsg');
+
+        btn.disabled = false;
+
+        if (data.season_active === false) {
+            btn.className = 'sync-button';
+            icon.className = 'fas fa-moon';
+            label.textContent = 'Temporada Inactiva';
+            statusMsg.textContent = 'No hay fixtures futuros. La temporada 2024-25 finalizó.';
+            statusMsg.style.display = 'block';
+        } else {
+            btn.className = 'sync-button success';
+            icon.className = 'fas fa-check';
+            label.textContent = '¡Sincronizado!';
+            if (data.sync_message) {
+                statusMsg.textContent = data.sync_message;
+                statusMsg.style.display = 'block';
+            }
+            // Volver al estado normal tras 3 segundos
+            setTimeout(() => {
+                btn.className = 'sync-button';
+                icon.className = 'fas fa-rotate-right';
+                label.textContent = 'Sincronizar';
+                statusMsg.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    // Cargar estado inicial al cargar la página
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/sync/status');
+            const data = await res.json();
+            updateSidebarStatus(data);
+
+            // Si arrancó sincronizando (muy raro ahora), iniciar polling
+            if (data.is_syncing) {
+                const btn = document.getElementById('syncBtn');
+                const icon = document.getElementById('syncIcon');
+                const label = document.getElementById('syncLabel');
+                btn.disabled = true;
+                btn.className = 'sync-button syncing';
+                icon.className = 'fas fa-rotate-right spinning';
+                label.textContent = 'Sincronizando...';
+                startPolling();
+            }
+
+            // Si la temporada está inactiva, cambiar el aspecto del botón
+            if (data.season_active === false) {
+                const btn = document.getElementById('syncBtn');
+                const icon = document.getElementById('syncIcon');
+                const label = document.getElementById('syncLabel');
+                const statusMsg = document.getElementById('syncStatusMsg');
+                btn.className = 'sync-button';
+                icon.className = 'fas fa-moon';
+                label.textContent = 'Temporada Inactiva';
+                statusMsg.textContent = 'Las ligas han finalizado. Sincroniza para verificar.';
+                statusMsg.style.display = 'block';
+            }
+        } catch (e) {
+            // Sin conexión, mostrar estado por defecto
+        }
+    });
+    </script>
 </body>
 </html>
+
