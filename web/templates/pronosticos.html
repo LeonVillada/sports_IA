@@ -56,9 +56,33 @@
     </div>
 
     {% if not all_predictions %}
-    <div class="stat-card" style="text-align: center; padding: 4rem;">
-        <h3 style="color: #94a3b8;">Esperando Próximos Encuentros...</h3>
-        <p>Sincroniza los fixtures para generar nuevas predicciones.</p>
+    <div class="season-end-banner">
+        <div class="season-end-icon">
+            <i class="fas fa-trophy"></i>
+        </div>
+        <div class="season-end-content">
+            <h3>Temporada 2024-25 Finalizada</h3>
+            <p>Las ligas rastreadas han concluido su temporada. El sistema conserva todo el historial de datos y el modelo de IA está listo para la próxima temporada.</p>
+            <div class="season-end-leagues">
+                <span class="league-pill">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League</span>
+                <span class="league-pill">🇪🇸 La Liga</span>
+                <span class="league-pill">🇩🇪 Bundesliga</span>
+                <span class="league-pill">🇮🇹 Serie A</span>
+                <span class="league-pill">🇫🇷 Ligue 1</span>
+            </div>
+            <div class="season-end-next">
+                <i class="fas fa-calendar-alt" style="color: #38bdf8;"></i>
+                <span>Próximo regreso: <strong>Agosto - Septiembre 2025</strong></span>
+            </div>
+            <div class="season-end-actions">
+                <a href="/review" class="season-btn-primary">
+                    <i class="fas fa-chart-line"></i> Ver Rendimiento del Modelo
+                </a>
+                <button onclick="triggerSync()" class="season-btn-secondary">
+                    <i class="fas fa-rotate-right"></i> Verificar Nuevos Fixtures
+                </button>
+            </div>
+        </div>
     </div>
     {% else %}
     
@@ -654,5 +678,141 @@ document.addEventListener('DOMContentLoaded', () => {
     background: #0f172a;
     color: #f8fafc;
 }
+
+/* ==============================
+   BANNER FIN DE TEMPORADA
+   ============================== */
+.season-end-banner {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.6) 100%);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    border-radius: 28px;
+    padding: 3rem;
+    margin: 1rem 0 3rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.season-end-banner::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    right: -60px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.season-end-icon {
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.08) 100%);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #fbbf24;
+}
+
+.season-end-content h3 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 0.5rem;
+}
+
+.season-end-content > p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.season-end-leagues {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.league-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+
+.season-end-next {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+    padding: 0.75rem 1rem;
+    background: rgba(56, 189, 248, 0.05);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    border-radius: 10px;
+}
+
+.season-end-next strong {
+    color: #38bdf8;
+}
+
+.season-end-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.season-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.7rem 1.4rem;
+    background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.season-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
+}
+
+.season-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.7rem 1.4rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    border-radius: 12px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.season-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f8fafc;
+    transform: translateY(-2px);
+}
 </style>
 {% endblock %}
+

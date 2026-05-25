@@ -11,9 +11,10 @@ import threading
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 
+from fastapi.responses import JSONResponse
 from scripts.db_manager import create_connection
 from scripts.poisson_model import calculate_team_strengths, predict_match
-from scripts.ingestion import sync_fixtures, download_and_import_massive
+from scripts.ingestion import sync_fixtures, download_and_import_massive, cleanup_stale_scheduled_matches
 from scripts.evaluate_results import evaluate_recent_matches
 from scripts.learning_module import train_adjustment_factors
 from scripts.config import load_config, save_config
@@ -39,62 +40,110 @@ config_data = load_config()
 system_status = {
     "last_sync": config_data.get("last_sync_time_str", "No sincronizado"),
     "is_syncing": False,
-    "last_accuracy": config_data.get("last_accuracy", 0)
+    "last_accuracy": config_data.get("last_accuracy", 0),
+    "season_active": config_data.get("season_active", True),
+    "sync_message": config_data.get("sync_message", "")
 }
 
-def run_startup_sync():
-    """Orquestación completa de actualización y retroalimentación"""
+def run_full_sync():
+    """
+    Orquestación completa de actualización y retroalimentación.
+    Se ejecuta SOLO cuando el usuario presiona el botón Sincronizar en la UI.
+    NO se llama automáticamente al arrancar el servidor.
+    """
     global system_status
     system_status["is_syncing"] = True
-    print("\n[STARTUP] Iniciando sincronización integral...")
-    
+    system_status["sync_message"] = "Sincronización en progreso..."
+    print("\n[SYNC] Iniciando sincronización integral (disparada manualmente)...")
+
     try:
-        # 1. Sincronizar fixtures (próximos partidos)
-        sync_fixtures()
-        
-        # 2. Actualizar resultados de partidos finalizados
+        # 0. Limpiar partidos 'scheduled' cuya fecha ya pasó
+        _conn = create_connection()
+        if _conn:
+            cleanup_stale_scheduled_matches(_conn)
+            _conn.close()
+
+        # 1. Actualizar resultados de partidos finalizados (incremental desde la BD)
         download_and_import_massive()
-        
+
+        # 2. Sincronizar fixtures futuros (con fallback a proxy automático)
+        fixture_result = sync_fixtures()
+        fixtures_found = fixture_result.get("fixtures_found", 0)
+        fixture_status = fixture_result.get("status", "error")
+        fixture_msg = fixture_result.get("message", "")
+
+        # Determinar si la temporada está activa según los fixtures encontrados
+        season_active = (fixture_status == "ok" and fixtures_found > 0)
+        system_status["season_active"] = season_active
+        system_status["sync_message"] = fixture_msg
+
         # 3. Evaluar predicciones pasadas (marcar aciertos/fallos)
         eval_stats = evaluate_recent_matches(days=14, silent=True)
         if eval_stats and eval_stats["total"] > 0:
             system_status["last_accuracy"] = round((eval_stats["hits"] / eval_stats["total"]) * 100, 1)
-        
+
         # 4. Ajustar factores de la neurona (aprendizaje)
         train_adjustment_factors(silent=True)
-        
+
         system_status["last_sync"] = datetime.now().strftime("%d/%m/%Y %H:%M")
-        
-        # Save to config persistently
+
+        # Guardar estado en config de forma persistente
         config_data = load_config()
         config_data["last_sync_date"] = datetime.now().strftime("%Y-%m-%d")
         config_data["last_sync_time_str"] = system_status["last_sync"]
         config_data["last_accuracy"] = system_status["last_accuracy"]
+        config_data["season_active"] = season_active
+        config_data["sync_message"] = fixture_msg
         save_config(config_data)
-        
-        print(f"[STARTUP] Sincronización finalizada con éxito. Precisión detectada: {system_status['last_accuracy']}%")
+
+        print(f"[SYNC] Finalizado. Fixtures: {fixtures_found} | Temporada activa: {season_active} | Precisión: {system_status['last_accuracy']}%")
+
     except Exception as e:
-        print(f"[STARTUP] ERROR en sincronización: {e}")
+        msg = f"Error durante la sincronización: {e}"
+        system_status["sync_message"] = msg
+        print(f"[SYNC] ERROR: {e}")
         import traceback
         traceback.print_exc()
     finally:
         system_status["is_syncing"] = False
-        print("[STARTUP] Proceso de sincronización terminado (estado is_syncing reseteado).")
+        print("[SYNC] Proceso terminado.")
 
-@app.on_event("startup")
-async def startup_event():
-    # Ejecutar en hilo separado para no bloquear el inicio del servidor
-    thread = threading.Thread(target=run_startup_sync)
-    thread.start()
-
-# --- RUTAS DE SINCRONIZACIÓN ---
-@app.get("/sync")
-async def sync_data(request: Request):
+# --- API DE SINCRONIZACIÓN MANUAL ---
+@app.post("/api/sync")
+async def api_sync_trigger():
+    """Dispara la sincronización completa en un hilo aparte. Llamado por el botón en la UI."""
     if system_status["is_syncing"]:
-        return {"status": "Sync already in progress"}
-    thread = threading.Thread(target=run_startup_sync)
+        return JSONResponse(
+            status_code=409,
+            content={"status": "busy", "message": "Ya hay una sincronización en curso. Por favor espera."}
+        )
+    thread = threading.Thread(target=run_full_sync, daemon=True)
     thread.start()
-    return {"status": "Sync started in background"}
+    return JSONResponse(
+        status_code=202,
+        content={"status": "started", "message": "Sincronización iniciada. Monitorea el estado en /api/sync/status"}
+    )
+
+@app.get("/api/sync/status")
+async def api_sync_status():
+    """Retorna el estado actual de la sincronización. Usado por la UI para polling."""
+    return JSONResponse(content={
+        "is_syncing": system_status["is_syncing"],
+        "last_sync": system_status["last_sync"],
+        "last_accuracy": system_status["last_accuracy"],
+        "season_active": system_status["season_active"],
+        "sync_message": system_status["sync_message"]
+    })
+
+# Mantener compatibilidad con la URL antigua (GET /sync)
+@app.get("/sync")
+async def sync_data_legacy():
+    """Ruta legacy. Usar POST /api/sync desde la UI."""
+    if system_status["is_syncing"]:
+        return {"status": "busy", "message": "Sincronización en curso"}
+    thread = threading.Thread(target=run_full_sync, daemon=True)
+    thread.start()
+    return {"status": "started"}
 
 # --- SERVICIOS ---
 def get_db_stats():
@@ -178,10 +227,8 @@ async def index(request: Request):
 
 @app.get("/pronosticos")
 async def pronosticos(request: Request):
-    # Sincronización rápida de fixtures al entrar (opcional)
-    thread = threading.Thread(target=sync_fixtures)
-    thread.start()
-    
+    # NOTA: La sincronización de fixtures ya NO se dispara automáticamente al visitar esta página.
+    # El usuario debe usar el botón "Sincronizar" en el sidebar para actualizar los datos.
     conn = create_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("USE sports_ai_db")

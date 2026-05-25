@@ -7,7 +7,9 @@ CONFIG_PATH = os.path.join(BASE_DIR, 'data', 'system_config.json')
 DEFAULT_CONFIG = {
     "last_sync_date": "2024-01-01",  # A fallback date far in the past
     "last_sync_time_str": "No sincronizado",
-    "last_accuracy": 0
+    "last_accuracy": 0,
+    "season_active": True,           # False cuando no hay fixtures futuros (fin de temporada)
+    "sync_message": ""               # Último mensaje del proceso de sincronización
 }
 
 def load_config():

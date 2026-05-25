@@ -26,9 +26,27 @@
             <p>Estado</p>
             <h3 class="pulse">Sincronizando...</h3>
         </div>
+        {% elif not system.season_active %}
+        <div class="stat-card" style="border-left: 3px solid #fbbf24;">
+            <p>Temporada</p>
+            <h3 style="color: #fbbf24; font-size: 1rem;">2024-25 Finalizada</h3>
+            <span class="sub-text">Regreso: Ago-Sep 2025</span>
+        </div>
         {% endif %}
     </div>
 </header>
+
+{% if not system.season_active %}
+<div class="season-notice">
+    <i class="fas fa-moon" style="color: #fbbf24;"></i>
+    <div>
+        <strong>Temporada 2024-25 completada.</strong>
+        Las 5 grandes ligas europeas han finalizado. Los pronósticos estarán disponibles cuando
+        comience la nueva temporada en <strong>agosto-septiembre 2025</strong>.
+        <a href="/review" style="color: #38bdf8; margin-left: 8px;">Ver resultados históricos →</a>
+    </div>
+</div>
+{% endif %}
 
 <section class="matches-section">
     <div class="section-header">
@@ -98,4 +116,29 @@
         </table>
     </div>
 </section>
+
+<style>
+.season-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(251, 191, 36, 0.06);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    border-radius: 14px;
+    padding: 1rem 1.4rem;
+    margin-bottom: 2rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    line-height: 1.6;
+}
+
+.season-notice i {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.season-notice strong {
+    color: #f8fafc;
+}
+</style>
 {% endblock %}
